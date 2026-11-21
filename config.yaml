@@ -1,0 +1,46 @@
+# AI Promo Finder settings. Change values here - no code changes needed.
+
+# Folder that holds one show's screenplay .txt files (one file per episode).
+show_dir: "data/I Married a Broken Soldier. He was a Duke"
+
+llm:
+  provider: gemini                  # "gemini" (Google AI Studio) or "openai_compatible" (OpenAI, Groq, OpenRouter, Kuku gateway...)
+  model: gemini-3.5-flash-lite      # free Flash-Lite model, verified working 2026-11-21 (gemini-3.5-flash free quota ran out after a few calls)
+  fallback_models: [gemini-3.1-flash-lite, gemini-3.5-flash]   # tried in order if the main model's quota runs out
+  base_url: ""                      # only for openai_compatible
+  api_key_env: GEMINI_API_KEY       # name of the variable in .env that holds the key
+  temperature: 0.2
+  requests_per_minute: 10           # client-side throttle to stay inside the free tier
+  max_retries: 5
+  cache_dir: cache                  # identical prompts are answered from disk (free, instant)
+
+promo:
+  target_seconds: 30                # aim for 30-second promos
+  min_seconds: 27                   # allowed range around the target (cuts land on whole lines, so exactly 30.0s is rarely possible)
+  max_seconds: 33
+  final_promo_count: 15             # how many promos to deliver in the final list
+  max_promos_per_episode: 2         # spread the final list across the show (at most 2 promos from any one episode)
+  tighten_long_moments: true        # a strong 40-60s hook->cliffhanger stretch may be cut to ~30s by dropping its middle
+  hook_window_seconds: 3            # hook must start within this many seconds of the promo start
+  candidates_per_episode: 3         # single-stretch candidates kept per episode before judging
+  multi_segment_candidates: 12      # multi-moment candidates built from hooks + cliffhangers of different moments
+  judge_top_n: 120                  # how many candidates the AI judge scores
+  judge_batch_size: 5               # candidates per judge call (each judged on its own lines only)
+  near_duplicate_overlap: 0.5       # two promos sharing >50% of the same seconds count as duplicates
+
+# Strict gate: a promo reaches the final list ONLY if it passes BOTH tests. Failures go to outputs/rejected_promos.csv.
+gate:
+  hook_min_score: 4                 # AI hook score (1-5) must be at least this
+  cliffhanger_min_score: 4          # AI cliffhanger score (1-5) must be at least this
+  cliff_end_window_seconds: 2.0     # the cliffhanger beat must end within this many seconds of the promo's end
+  next_beats_to_check: 2            # how many script beats after the cut are checked for an immediate resolution
+  fill_with_near_misses: true       # if fewer than final_promo_count pass, fill the list with the CLOSEST near-misses,
+                                    # clearly labelled "NEAR MISS" with what they failed. Timing checks are never relaxed.
+
+# Judge weights (must add up to 100). Each criterion is scored 1-5 by the AI.
+weights:
+  hook: 25
+  cliffhanger: 25
+  standalone_clarity: 20
+  timestamp_quality: 15
+  promo_appeal: 15
